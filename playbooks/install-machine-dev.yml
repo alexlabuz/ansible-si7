@@ -29,6 +29,14 @@
     apt:
       name: php7.2
       state: present
+  - name: Installation de php 7.2-mbstring
+    apt:
+      name: php7.2-mbstring
+      state: present
+  - name: Installation de php 7.2-mysqli
+    apt:
+      name: php7.2-mysqli
+      state: present
 - name: Installation de MySQL
   hosts: all
   tasks:
@@ -71,3 +79,73 @@
       host: localhost
       priv: "{{mysql_db}}.*:ALL,GRANT"
       login_unix_socket: /var/run/mysqld/mysqld.sock
+- name: Installation de PhpMyAdmin
+  hosts: all
+  tasks:
+  - name: Installation du module debconf-utils
+    apt:
+      name: debconf-utils
+      state: present
+  - name: Installation de dbconfig
+    debconf:
+      name: phpmyadmin
+      question: phpmyadmin/dbconfig-install
+      value: true
+      vtype: boolean
+  - name: confirmation du mot de passe
+    debconf:
+      name: phpmyadmin
+      question: phpmyadmin/app-password-confirm
+      value: btsinfo
+      vtype: password
+  - name: configuration du mot de passe admin
+    debconf:
+      name: phpmyadmin
+      question: phpmyadmin/mysql/admin-pass
+      value: btsinfo
+      vtype: password
+  - name: configuration du mot de passe utilisateur
+    debconf:
+      name: phpmyadmin
+      question: phpmyadmin/mysql/app-pass
+      value: btsinfo
+      vtype: password
+  - name: web server configuration
+    debconf:
+      name: phpmyadmin
+      question: phpmyadmin/reconfigure-webserver
+      value: apache2
+      vtype: multiselect
+  - name: Installation de PhpMyAdmin
+    apt:
+      name: phpmyadmin
+      state: present
+- name: Gestion des erreurs
+  hosts: all
+  tasks:
+  - name: Suppression index.html
+    file: 
+      path: /var/www/html/index.html
+      state: absent
+  - name: Copie du fichier index.php
+    copy:
+      src: /var/www/index.php
+      dest: /var/www/html/
+      owner: www-data
+      group: www-data
+      mode: 0755
+  - name: Activation de l'affichage des erreurs display_error
+    lineinfile:
+      dest: /etc/php/7.2/apache2/php.ini
+      regexp: '^display_errors=Off'
+      line: 'display_errors=On'
+  - name: Activation de l'affichage des erreurs display_startup_error
+    lineinfile:
+      dest: /etc/php/7.2/apache2/php.ini
+      regexp: '^display_startup_errors=Off'
+      line: 'display_startup_errors=On'
+  - name: Redémarrer le service Apache
+    service:
+      name: apache2
+      state: restarted
+      enabled: yes
